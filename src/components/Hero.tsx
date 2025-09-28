@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Cloud, Upload, Shield, Share } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-cloud.jpg";
 
 const Hero = () => {
@@ -20,12 +21,16 @@ const Hero = () => {
               Upload any format, generate shareable links, and protect with passwords.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start">
-              <Button size="lg" variant="hero" className="text-lg px-8 py-4">
-                Get Started Free
-              </Button>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-4">
-                Learn More
-              </Button>
+              <Link to="/auth">
+                <Button size="lg" variant="hero" className="text-lg px-8 py-4 w-full sm:w-auto">
+                  Login / Register
+                </Button>
+              </Link>
+              <Link to="/dashboard">
+                <Button size="lg" variant="outline" className="text-lg px-8 py-4 w-full sm:w-auto">
+                  Dashboard
+                </Button>
+              </Link>
             </div>
           </div>
           

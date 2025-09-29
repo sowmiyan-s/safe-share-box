@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
-import { Upload, File, Share, Download, Trash2, Lock, Eye, Copy, LogOut, User, Plus, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Upload, File, Share, Download, Trash2, Lock, Eye, Copy, LogOut, User, Plus, AlertCircle, Clock, Users } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -34,6 +35,8 @@ interface SharedLink {
   expires_at: string | null;
   created_at: string;
   accessed_count: number;
+  max_access_count: number | null;
+  has_access_limit: boolean;
 }
 
 // Validation schemas
@@ -51,6 +54,9 @@ const Dashboard = () => {
   const [sharePassword, setSharePassword] = useState("");
   const [shareWithPassword, setShareWithPassword] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [shareExpiration, setShareExpiration] = useState<string>("never");
+  const [shareAccessLimit, setShareAccessLimit] = useState<string>("unlimited");
+  const [customAccessCount, setCustomAccessCount] = useState<string>("1");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -207,6 +213,9 @@ const Dashboard = () => {
     setSharePassword("");
     setShareWithPassword(false);
     setPasswordError("");
+    setShareExpiration("never");
+    setShareAccessLimit("unlimited");
+    setCustomAccessCount("1");
   };
 
   const generateShareLink = async () => {
@@ -236,6 +245,31 @@ const Dashboard = () => {
         passwordHash = btoa(sharePassword);
       }
 
+      // Calculate expiration date
+      let expiresAt = null;
+      if (shareExpiration !== "never") {
+        const now = new Date();
+        if (shareExpiration === "1d") {
+          expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
+        } else if (shareExpiration === "7d") {
+          expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString();
+        } else if (shareExpiration === "1m") {
+          expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+      }
+
+      // Handle access limits
+      let maxAccessCount = null;
+      let hasAccessLimit = false;
+      if (shareAccessLimit !== "unlimited") {
+        hasAccessLimit = true;
+        if (shareAccessLimit === "custom") {
+          maxAccessCount = parseInt(customAccessCount) || 1;
+        } else {
+          maxAccessCount = parseInt(shareAccessLimit);
+        }
+      }
+
       // Create shared link
       const { error } = await supabase
         .from('shared_links')
@@ -244,7 +278,10 @@ const Dashboard = () => {
           user_id: user.id,
           share_token: shareToken,
           password_hash: passwordHash,
-          has_password: shareWithPassword
+          has_password: shareWithPassword,
+          expires_at: expiresAt,
+          max_access_count: maxAccessCount,
+          has_access_limit: hasAccessLimit
         });
 
       if (error) throw error;
@@ -422,14 +459,28 @@ const Dashboard = () => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2">
-                          {sharedLink && (
-                            <Badge variant="secondary" className="gap-1">
-                              <Share className="w-3 h-3" />
-                              Shared
-                              {sharedLink.has_password && <Lock className="w-3 h-3" />}
-                            </Badge>
-                          )}
+                         <div className="flex items-center gap-2">
+                           {sharedLink && (
+                             <div className="flex gap-1">
+                               <Badge variant="secondary" className="gap-1">
+                                 <Share className="w-3 h-3" />
+                                 Shared
+                                 {sharedLink.has_password && <Lock className="w-3 h-3" />}
+                               </Badge>
+                               {sharedLink.expires_at && (
+                                 <Badge variant="outline" className="gap-1">
+                                   <Clock className="w-3 h-3" />
+                                   Expires
+                                 </Badge>
+                               )}
+                               {sharedLink.has_access_limit && (
+                                 <Badge variant="outline" className="gap-1">
+                                   <Users className="w-3 h-3" />
+                                   {sharedLink.accessed_count}/{sharedLink.max_access_count}
+                                 </Badge>
+                               )}
+                             </div>
+                           )}
                           
                           <Button variant="ghost" size="sm" onClick={() => handleDownload(file)}>
                             <Download className="w-4 h-4" />
@@ -501,6 +552,50 @@ const Dashboard = () => {
                 )}
               </div>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="expiration">Link Expiration</Label>
+              <Select value={shareExpiration} onValueChange={setShareExpiration}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select expiration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="never">No Expiry</SelectItem>
+                  <SelectItem value="1d">1 Day</SelectItem>
+                  <SelectItem value="7d">7 Days</SelectItem>
+                  <SelectItem value="1m">1 Month</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="access-limit">Access Limit</Label>
+              <Select value={shareAccessLimit} onValueChange={setShareAccessLimit}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select access limit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unlimited">Unlimited</SelectItem>
+                  <SelectItem value="1">1 Person</SelectItem>
+                  <SelectItem value="5">5 People</SelectItem>
+                  <SelectItem value="10">10 People</SelectItem>
+                  <SelectItem value="100">100 People</SelectItem>
+                  <SelectItem value="custom">Custom</SelectItem>
+                </SelectContent>
+              </Select>
+              {shareAccessLimit === "custom" && (
+                <div className="mt-2">
+                  <Input
+                    type="number"
+                    placeholder="Enter custom count"
+                    value={customAccessCount}
+                    onChange={(e) => setCustomAccessCount(e.target.value)}
+                    min="1"
+                    max="10000"
+                  />
+                </div>
+              )}
+            </div>
             
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShareDialogOpen(false)}>

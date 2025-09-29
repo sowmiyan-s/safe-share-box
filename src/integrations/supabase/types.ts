@@ -83,8 +83,10 @@ export type Database = {
           created_at: string
           expires_at: string | null
           file_id: string
+          has_access_limit: boolean | null
           has_password: boolean
           id: string
+          max_access_count: number | null
           password_hash: string | null
           share_token: string
           user_id: string
@@ -94,8 +96,10 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           file_id: string
+          has_access_limit?: boolean | null
           has_password?: boolean
           id?: string
+          max_access_count?: number | null
           password_hash?: string | null
           share_token: string
           user_id: string
@@ -105,8 +109,10 @@ export type Database = {
           created_at?: string
           expires_at?: string | null
           file_id?: string
+          has_access_limit?: boolean | null
           has_password?: boolean
           id?: string
+          max_access_count?: number | null
           password_hash?: string | null
           share_token?: string
           user_id?: string

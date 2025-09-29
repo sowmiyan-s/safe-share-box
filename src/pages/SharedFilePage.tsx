@@ -19,6 +19,8 @@ interface SharedLink {
   expires_at: string | null;
   created_at: string;
   accessed_count: number;
+  max_access_count: number | null;
+  has_access_limit: boolean;
 }
 
 interface FileData {
@@ -66,6 +68,26 @@ const SharedFilePage = () => {
         toast({
           title: "File Not Found",
           description: "This shared link does not exist or has expired.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check if link has expired
+      if (linkData.expires_at && new Date(linkData.expires_at) < new Date()) {
+        toast({
+          title: "Link Expired",
+          description: "This shared link has expired.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check if access limit has been reached
+      if (linkData.has_access_limit && linkData.max_access_count && linkData.accessed_count >= linkData.max_access_count) {
+        toast({
+          title: "Access Limit Reached",
+          description: "This shared link has reached its maximum access limit.",
           variant: "destructive"
         });
         return;
@@ -233,9 +255,12 @@ const SharedFilePage = () => {
                 <p className="text-sm text-muted-foreground">
                   {formatFileSize(fileData.file_size)} • Shared {new Date(sharedLink.created_at).toLocaleDateString()}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Accessed {sharedLink.accessed_count} times
-                </p>
+                <div className="text-xs text-muted-foreground space-y-1">
+                  <p>Accessed {sharedLink.accessed_count} times{sharedLink.has_access_limit && sharedLink.max_access_count && ` / ${sharedLink.max_access_count} max`}</p>
+                  {sharedLink.expires_at && (
+                    <p>Expires: {new Date(sharedLink.expires_at).toLocaleDateString()}</p>
+                  )}
+                </div>
               </div>
 
               <Button 
